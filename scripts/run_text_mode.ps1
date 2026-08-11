@@ -1,4 +1,4 @@
-# Runs ORBIT in text mode (no mic/hotkey needed) — useful to sanity-check
+# Runs ORBIT in text mode (no mic/hotkey needed) - useful to sanity-check
 # a fresh install before trying real voice control.
 # Usage: powershell -ExecutionPolicy Bypass -File scripts\run_text_mode.ps1
 

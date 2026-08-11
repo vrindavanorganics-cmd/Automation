@@ -35,11 +35,11 @@ python -m playwright install chromium
 # 5. .env file
 if (-not (Test-Path ".env")) {
     Copy-Item ".env.example" ".env"
-    Write-Host ".env created from .env.example — edit it to add API keys if you want cloud LLM reasoning." -ForegroundColor Yellow
+    Write-Host ".env created from .env.example - edit it to add API keys if you want cloud LLM reasoning." -ForegroundColor Yellow
 }
 
 # 6. Data directories
-python -c "from orbit.config import settings; print('Data directory ready at', settings.data_dir)"
+python scripts\ensure_data_dirs.py
 
 Write-Host ""
 Write-Host "== Setup complete ==" -ForegroundColor Green
