@@ -2,24 +2,29 @@
 # These CANNOT be installed or tested inside the browser Claude Code workspace.
 # Install this file only after ORBIT is running on your actual Windows PC:
 #   pip install -r requirements/base.txt -r requirements/windows.txt
+#
+# Versions below are minimum floors (not exact pins) so pip always picks a
+# release with a ready-made installer for whatever Python version is
+# actually installed, instead of trying (and often failing) to compile an
+# old pinned version from source.
 -r base.txt
 
 # Computer control
-pyautogui==0.9.54
-pywinauto==0.6.8; platform_system == "Windows"
-pygetwindow==0.0.9; platform_system == "Windows"
-pyperclip==1.9.0
-keyboard==0.13.5
-pynput==1.7.7
+pyautogui>=0.9.54
+pywinauto>=0.6.8; platform_system == "Windows"
+pygetwindow>=0.0.9; platform_system == "Windows"
+pyperclip>=1.9.0
+keyboard>=0.13.5
+pynput>=1.7.7
 
 # System tray / desktop UI
-pystray==0.19.5
-Pillow==10.4.0
+pystray>=0.19.5
+Pillow>=10.4.0
 
 # Audio capture + VAD
-sounddevice==0.5.1
-numpy==2.1.3
-webrtcvad-wheels==2.0.14
+sounddevice>=0.5.1
+numpy>=1.26.0
+webrtcvad-wheels>=2.0.14
 
 # Speech recognition (local, open-source)
-faster-whisper==1.0.3
+faster-whisper>=1.0.3
