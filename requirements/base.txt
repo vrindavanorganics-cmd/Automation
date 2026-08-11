@@ -1,0 +1,9 @@
+# Cross-platform core dependencies (installable and testable in this browser workspace)
+pypdf==5.1.0
+openpyxl==3.1.5
+python-docx==1.1.2
+psutil==6.1.0
+rapidfuzz==3.10.1
+PyYAML==6.0.2
+python-dotenv==1.0.1
+playwright==1.62.0

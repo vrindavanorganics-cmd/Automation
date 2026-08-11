@@ -1,0 +1,45 @@
+"""Tool: launch/close/focus Windows applications, using the AppRegistry to
+resolve names/aliases and a WindowsController (simulated or real) to act.
+"""
+from __future__ import annotations
+
+from orbit.tools.base import Tool, ToolResult
+from orbit.windows.app_registry import AppRegistry
+from orbit.windows.control import WindowsController
+
+
+class WindowsAppsTool(Tool):
+    name = "windows_apps"
+
+    def __init__(self, controller: WindowsController, registry: AppRegistry):
+        self.controller = controller
+        self.registry = registry
+
+    def do_open_app(self, app: str) -> ToolResult:
+        entry = self.registry.resolve(app)
+        target = entry.executable if entry else app
+        display_name = entry.name if entry else app
+        launched = self.controller.launch_app(target)
+        if not launched:
+            return ToolResult.fail(f"Failed to launch {display_name}", app=display_name)
+        return ToolResult.ok(f"Launched {display_name}", app=display_name, backend=self.controller.backend_name)
+
+    def do_close_app(self, app: str) -> ToolResult:
+        entry = self.registry.resolve(app)
+        display_name = entry.name if entry else app
+        closed = self.controller.close_app(display_name)
+        if not closed:
+            return ToolResult.fail(f"No open window found for {display_name}", app=display_name)
+        return ToolResult.ok(f"Closed {display_name}", app=display_name)
+
+    def do_list_windows(self) -> ToolResult:
+        windows = self.controller.list_windows()
+        return ToolResult.ok(f"{len(windows)} window(s) open", windows=windows)
+
+    def do_focus_app(self, app: str) -> ToolResult:
+        entry = self.registry.resolve(app)
+        display_name = entry.name if entry else app
+        focused = self.controller.focus_window(display_name)
+        if not focused:
+            return ToolResult.fail(f"Could not focus {display_name}", app=display_name)
+        return ToolResult.ok(f"Focused {display_name}", app=display_name)

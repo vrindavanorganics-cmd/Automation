@@ -1,0 +1,54 @@
+from orbit.agent.intent import guess_language, parse_intent
+
+
+def test_open_app_english():
+    intent = parse_intent("Orbit, open Chrome")
+    assert intent.action == "open_app"
+    assert intent.entities["app"] == "Google Chrome"
+
+
+def test_create_folder_preserves_case():
+    intent = parse_intent("create a folder called Buyer Leads")
+    assert intent.action == "create_folder"
+    assert intent.entities["folder_name"] == "Buyer Leads"
+
+
+def test_hinglish_command():
+    intent = parse_intent("Chrome kholo aur Gmail check karo")
+    assert intent.action in ("open_app", "read_email")
+    assert intent.language_guess in ("hi", "hinglish")
+
+
+def test_stop_command_variants():
+    assert parse_intent("Orbit, stop").action == "stop"
+    assert parse_intent("ruko").action == "stop"
+
+
+def test_cancel_send_beats_send():
+    intent = parse_intent("don't send it")
+    assert intent.action == "cancel_send"
+
+
+def test_send_command():
+    intent = parse_intent("send it")
+    assert intent.action == "send"
+
+
+def test_unknown_command_low_confidence():
+    intent = parse_intent("asdkjaslkdj qqweqwe")
+    assert intent.action == "unknown"
+    assert intent.confidence < 0.5
+
+
+def test_guess_language_devanagari():
+    assert guess_language("नमस्ते खोलो") == "hi"
+
+
+def test_guess_language_english():
+    assert guess_language("open chrome please") == "en"
+
+
+def test_search_query_extraction_preserves_case():
+    intent = parse_intent("search for Ekagya Exports")
+    assert intent.action == "search"
+    assert intent.entities["query"] == "Ekagya Exports"
