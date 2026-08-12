@@ -16,7 +16,7 @@ from orbit.asr.factory import get_asr_engine
 from orbit.asr.vocabulary import VocabularyStore
 from orbit.config import Settings
 from orbit.config import settings as default_settings
-from orbit.email.sender import EmailSender, MockEmailSender
+from orbit.email.sender import BrowserGmailSender, EmailSender, MockEmailSender
 from orbit.memory.store import MemoryStore
 from orbit.permissions.engine import ConfirmCallback, PermissionEngine
 from orbit.skills.engine import SkillEngine
@@ -59,7 +59,7 @@ def build_orbit(
     confirm_callback: Optional[ConfirmCallback] = None,
     force_mock_asr: bool = False,
     email_sender: Optional[EmailSender] = None,
-    browser_headless: bool = True,
+    browser_headless: Optional[bool] = None,
 ) -> OrbitSystem:
     settings = settings or default_settings
 
@@ -72,16 +72,30 @@ def build_orbit(
     controller = get_controller(force_simulated=settings.force_simulated_controller)
     app_registry = AppRegistry()
     app_registry.detect_installed()
+    is_real_windows = controller.backend_name == "real-windows"
+
+    # Headless by default (this workspace, tests, CI); on a real Windows
+    # run, default to a visible browser so the user can log into Gmail the
+    # first time -- the login then persists in browser_profile below.
+    effective_headless = browser_headless if browser_headless is not None else not is_real_windows
 
     tool_registry = ToolRegistry()
     tool_registry.register(WindowsAppsTool(controller, app_registry))
     tool_registry.register(FilesTool(base_dir=str(settings.data_dir)))
     tool_registry.register(PdfTool())
     tool_registry.register(ExcelTool(base_dir=str(settings.data_dir)))
-    tool_registry.register(BrowserTool(headless=browser_headless))
+    browser_tool = BrowserTool(
+        headless=effective_headless, profile_dir=str(settings.data_dir / "browser_profile")
+    )
+    tool_registry.register(browser_tool)
     tool_registry.register(SystemTool())
 
-    sender = email_sender or MockEmailSender()
+    if email_sender is not None:
+        sender: EmailSender = email_sender
+    elif is_real_windows:
+        sender = BrowserGmailSender(browser_tool)
+    else:
+        sender = MockEmailSender()
     tool_registry.register(EmailTool(sender=sender))
 
     skill_engine = SkillEngine(memory, tool_registry, permission_engine)

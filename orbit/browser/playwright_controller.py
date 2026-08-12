@@ -39,12 +39,27 @@ def _default_chromium_executable() -> Optional[str]:
 
 
 class BrowserController:
-    """Thin synchronous wrapper around Playwright's sync API."""
+    """Thin synchronous wrapper around Playwright's sync API.
 
-    def __init__(self, headless: bool = True, browser_type: str = "chromium", executable_path: Optional[str] = None):
+    With `profile_dir` set, uses a persistent browser profile (cookies,
+    local storage, logins) stored on disk under that path -- so logging
+    into Gmail once in ORBIT stays logged in across future runs, the same
+    way a normal browser profile would. Without it, each session starts
+    from a clean slate (used for headless search/summarize/scrape tasks
+    that don't need any login state).
+    """
+
+    def __init__(
+        self,
+        headless: bool = True,
+        browser_type: str = "chromium",
+        executable_path: Optional[str] = None,
+        profile_dir: Optional[str] = None,
+    ):
         self.headless = headless
         self.browser_type = browser_type
         self.executable_path = executable_path
+        self.profile_dir = profile_dir
         self._playwright = None
         self._browser = None
         self._context = None
@@ -56,15 +71,26 @@ class BrowserController:
 
         self._playwright = sync_playwright().start()
         launcher = getattr(self._playwright, self.browser_type)
-        launch_kwargs = {"headless": self.headless}
         exe = self.executable_path or (
             _default_chromium_executable() if self.browser_type == "chromium" else None
         )
-        if exe:
-            launch_kwargs["executable_path"] = exe
-        self._browser = launcher.launch(**launch_kwargs)
-        self._context = self._browser.new_context()
-        page = self._context.new_page()
+
+        if self.profile_dir:
+            os.makedirs(self.profile_dir, exist_ok=True)
+            launch_kwargs = {"headless": self.headless, "user_data_dir": self.profile_dir}
+            if exe:
+                launch_kwargs["executable_path"] = exe
+            self._context = launcher.launch_persistent_context(**launch_kwargs)
+            self._browser = None
+            page = self._context.pages[0] if self._context.pages else self._context.new_page()
+        else:
+            launch_kwargs = {"headless": self.headless}
+            if exe:
+                launch_kwargs["executable_path"] = exe
+            self._browser = launcher.launch(**launch_kwargs)
+            self._context = self._browser.new_context()
+            page = self._context.new_page()
+
         self._pages = [page]
         self._active_index = 0
 

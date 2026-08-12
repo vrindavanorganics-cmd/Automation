@@ -8,6 +8,7 @@ import pytest
 
 from orbit.bootstrap import build_orbit
 from orbit.config import Settings
+from orbit.files import fs_ops
 
 
 @pytest.fixture
@@ -47,6 +48,22 @@ def test_demo_pdf_summarize_plan_shape(system):
     # No filename was named, so this searches for (and summarizes) the most
     # recently modified PDF in the user's usual folders.
     assert response.plan.steps[0].action == "find_and_summarize"
+
+
+def test_demo_pdf_summarize_shows_the_actual_summary_text(system, monkeypatch, sample_pdf):
+    # Regression: the tool computed a real summary, but the response shown
+    # to the user was only a status line ("Summarized 'x.pdf'") -- the
+    # summary content itself never made it into what they saw.
+    monkeypatch.setattr(fs_ops.Path, "home", classmethod(lambda cls: system.settings.data_dir))
+    downloads = system.settings.data_dir / "Downloads"
+    downloads.mkdir()
+    (downloads / "quotation.pdf").write_bytes(sample_pdf.read_bytes())
+
+    response = system.brain.process_text_command("Orbit, open this PDF and summarize it.")
+
+    assert response.outcomes[-1].result.success
+    assert "Summarized" in response.text
+    assert "Ekagya Exports" in response.text
 
 
 def test_demo_create_excel_sheet(system):

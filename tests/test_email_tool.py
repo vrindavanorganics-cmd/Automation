@@ -1,4 +1,4 @@
-from orbit.email.sender import MockEmailSender
+from orbit.email.sender import EmailSender, MockEmailSender
 from orbit.tools.email_tool import EmailTool
 
 
@@ -51,3 +51,53 @@ def test_read_inbox_reports_local_windows_needed():
     result = tool.run("read", {})
     assert result.success is False
     assert "local Windows" in result.message
+
+
+def test_draft_reports_local_only_when_sender_has_no_real_mailbox():
+    # Regression: MockEmailSender used to make "Drafted email to X" sound
+    # identical whether or not anything real happened, which is exactly
+    # what confused a user expecting to see it in their actual Gmail drafts.
+    tool = EmailTool(sender=MockEmailSender())
+    result = tool.run("draft", {"to": "buyer@example.com", "subject": "s", "body": "b"})
+    assert result.success
+    assert result.data["live_gmail"] is False
+    assert "local draft only" in result.message
+
+
+def test_draft_calls_sender_draft_and_reports_live_success():
+    class RecordingSender(EmailSender):
+        def __init__(self):
+            self.drafted = []
+
+        def send(self, draft):
+            return True
+
+        def draft(self, draft):
+            self.drafted.append(draft)
+            return True
+
+    sender = RecordingSender()
+    tool = EmailTool(sender=sender)
+    result = tool.run("draft", {"to": "buyer@example.com", "subject": "s", "body": "b"})
+
+    assert result.success
+    assert len(sender.drafted) == 1
+    assert result.data["live_gmail"] is True
+    assert "opened in Gmail" in result.message
+
+
+def test_draft_surfaces_live_error_without_losing_local_draft():
+    class BrokenSender(EmailSender):
+        def send(self, draft):
+            return True
+
+        def draft(self, draft):
+            raise RuntimeError("not logged in")
+
+    tool = EmailTool(sender=BrokenSender())
+    result = tool.run("draft", {"to": "buyer@example.com", "subject": "s", "body": "b"})
+
+    assert result.success  # local draft still recorded
+    assert result.data["live_gmail"] is False
+    assert "not logged in" in result.message
+    assert tool.store.get(result.data["draft_id"]) is not None

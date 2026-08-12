@@ -16,15 +16,23 @@ from orbit.tools.base import Tool, ToolResult
 class BrowserTool(Tool):
     name = "browser"
 
-    def __init__(self, headless: bool = True):
+    def __init__(self, headless: bool = True, profile_dir: Optional[str] = None):
         self.headless = headless
+        self.profile_dir = profile_dir
         self._controller: Optional[BrowserController] = None
 
     def _ensure_started(self) -> BrowserController:
         if self._controller is None:
-            self._controller = BrowserController(headless=self.headless)
+            self._controller = BrowserController(headless=self.headless, profile_dir=self.profile_dir)
             self._controller.start()
         return self._controller
+
+    def get_controller(self) -> BrowserController:
+        """Public accessor so other tools (e.g. the email tool's Gmail
+        sender) can share this same browser session -- one login, reused
+        across commands -- instead of opening a second, separate browser.
+        """
+        return self._ensure_started()
 
     def shutdown(self) -> None:
         if self._controller:

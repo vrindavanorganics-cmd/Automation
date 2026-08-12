@@ -141,6 +141,11 @@ you> Orbit, send it.        <- always asks for confirmation first
   set a default browser profile — use a dedicated profile for ORBIT rather than
   your personal daily-driver Chrome profile, especially before enabling Gmail
   sending.
+- **Gmail login**: on Windows, ORBIT's browser tool runs with a real, persistent
+  profile at `data/browser_profile` (not headless) so a Gmail login sticks
+  across runs. The first time you draft or send an email, a real Chrome window
+  opens to `mail.google.com` — log into your Google account there once. After
+  that, "draft an email" / "send it" drive that same logged-in window.
 
 ## 8. Troubleshooting
 
@@ -150,7 +155,8 @@ you> Orbit, send it.        <- always asks for confirmation first
 | Hotkey doesn't fire globally | Run PowerShell/terminal as Administrator |
 | `RuntimeError: RealWindowsController can only run on Windows` | Expected on Linux/macOS — use `--text` mode or set `ORBIT_FORCE_SIMULATED=true` |
 | Playwright browser fails to launch | `python -m playwright install chromium` |
-| Gmail send automation breaks | Gmail's DOM changes over time — `orbit/email/sender.py`'s `BrowserGmailSender` selectors may need updating; this is the one piece of code in the repo that cannot be verified until you test it against a real, logged-in Gmail session |
+| Gmail draft/send automation breaks | Gmail's DOM changes over time — `orbit/email/sender.py`'s `BrowserGmailSender` selectors may need updating; this is the one piece of code in the repo that cannot be verified until you test it against a real, logged-in Gmail session. `EmailTool.do_draft`'s response tells you honestly whether the live Gmail action succeeded ("opened in Gmail") or only the local record was kept ("local draft only" / an error) |
+| Email drafts locally but Gmail shows nothing | You aren't logged into Google in ORBIT's browser profile yet — draft/send once to trigger the login window, sign in, then retry |
 | Memory database locked | Only one ORBIT process should hold `data/memory/orbit.db` at a time |
 
 ## 9. Local testing commands
@@ -189,7 +195,7 @@ python main.py --text
 | App registry + hardware detection | Built and tested (detection of *installed* apps only works on Windows — **LOCAL WINDOWS TEST NEEDED** for that part specifically). |
 | Files / PDF / Excel / Word tools | Built and tested with real files (real PDFs via a test fixture, real .xlsx round-trips). |
 | Browser control (Playwright) | Built and **actually tested** in this workspace — real headless Chromium navigation, text extraction, screenshots. |
-| Email (draft/send/cancel, permission-gated) | Built and tested against a mock sender. The real `BrowserGmailSender` is **LOCAL WINDOWS TEST NEEDED** — it needs a logged-in Gmail session this workspace cannot provide. |
+| Email (draft/send/cancel, permission-gated) | Built and tested against a mock sender, plus a browser-double test of `BrowserGmailSender`'s draft-then-send sequencing logic. On real Windows, `bootstrap.py` wires the real `BrowserGmailSender` (persistent, logged-in browser profile) automatically. Gmail's actual DOM/selectors are **LOCAL WINDOWS TEST NEEDED** — this workspace has no Google account to log into. |
 | Skills / Teach Mode engine | Built and tested (variables, loops, conditions, approval gates, retries, verification). |
 | Model Manager | Built and tested. |
 | ASR training pipeline | Built: clean/normalize/split/evaluate(WER/CER)/version are real and tested; download/train correctly refuse to run automatically (require network/GPU + explicit local execution). |

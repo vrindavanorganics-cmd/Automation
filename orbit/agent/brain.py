@@ -156,6 +156,14 @@ class OrbitBrain:
         if not outcomes:
             return "I didn't take any action."
         if success:
-            return outcomes[-1].result.message
+            result = outcomes[-1].result
+            # The message alone is just a status line ("Summarized 'x.pdf'")
+            # -- the actual content the user asked for (a PDF summary, etc.)
+            # lives in the result data and was previously computed but never
+            # shown.
+            summary = result.data.get("summary")
+            if summary:
+                return f"{result.message}\n\n{summary}"
+            return result.message
         failed = next((o for o in outcomes if not o.result.success), outcomes[-1])
         return f"Something went wrong: {failed.result.message}"

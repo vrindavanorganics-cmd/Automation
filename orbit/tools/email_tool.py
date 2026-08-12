@@ -26,7 +26,22 @@ class EmailTool(Tool):
     def do_draft(self, to: str, subject: str, body: str, attachments: Optional[list[str]] = None) -> ToolResult:
         draft = EmailDraft(to=to, subject=subject, body=body, attachments=attachments or [])
         self.store.add(draft)
-        return ToolResult.ok(f"Drafted email to {to}", draft_id=draft.id, draft=draft.to_dict())
+
+        live_ok = False
+        live_error: Optional[str] = None
+        try:
+            live_ok = self.sender.draft(draft)
+        except Exception as exc:  # a live Gmail/browser hiccup shouldn't lose the local draft
+            live_error = str(exc)
+
+        if live_ok:
+            message = f"Drafted email to {to} (opened in Gmail)"
+        elif live_error:
+            message = f"Drafted email to {to} locally -- could not open it in Gmail: {live_error}"
+        else:
+            message = f"Drafted email to {to} (local draft only -- no live mail client connected)"
+
+        return ToolResult.ok(message, draft_id=draft.id, draft=draft.to_dict(), live_gmail=live_ok)
 
     def do_draft_bulk(self, companies: list[str], template: str, attachment: Optional[str] = None) -> ToolResult:
         drafts = []
