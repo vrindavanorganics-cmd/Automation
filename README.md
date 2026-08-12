@@ -209,7 +209,7 @@ python main.py --text
 | ASR training pipeline | Built: clean/normalize/split/evaluate(WER/CER)/version are real and tested; download/train correctly refuse to run automatically (require network/GPU + explicit local execution). |
 | Memory (SQLite, secret-rejecting) | Built and tested. |
 | Activity history | Built and tested. |
-| Desktop UI | Text-mode REPL built and tested here. System tray (`pystray`) is built but **LOCAL WINDOWS TEST NEEDED** — no display in this workspace. |
+| Desktop UI | Text-mode REPL built and tested here. `python main.py --voice` now runs the system tray icon (status dot, current task, Stop/History/Settings menu, Esc-to-stop) as the real voice-mode UI, with menu wiring tested against a fake icon here. Actual on-screen rendering is **LOCAL WINDOWS TEST NEEDED** — no display in this workspace. |
 
 ---
 
