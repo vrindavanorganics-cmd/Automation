@@ -211,6 +211,19 @@ class TaskPlanner:
         )
         return Plan(summary="Run learned skill", steps=[step], source_intent=intent)
 
+    def _plan_switch_chrome_profile(self, intent: Intent) -> Plan:
+        name = intent.entities.get("profile_name")
+        if not name:
+            return self._ask("Which Chrome profile should I switch to?", intent)
+        step = PlanStep(
+            id="1",
+            tool="browser",
+            action="switch_profile",
+            params={"name": name},
+            description=f"Switch to Chrome profile: {name}",
+        )
+        return Plan(summary=f"Switch Chrome profile to {name}", steps=[step], source_intent=intent)
+
     def _plan_stop(self, intent: Intent) -> Plan:
         step = PlanStep(id="1", tool="system", action="stop", params={}, description="Stop current action")
         return Plan(summary="Stop", steps=[step], source_intent=intent)

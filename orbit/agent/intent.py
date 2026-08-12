@@ -39,6 +39,11 @@ ACTION_PATTERNS: dict[str, list[str]] = {
     "run_skill": [r"\brepeat\b", r"\brun (the )?(.+ )?(skill|workflow)\b", r"\bwaisa hi karo\b"],
     "stop": [r"\bstop\b", r"\bruko\b", r"\bruk jao\b", r"\bband karo\b"],
     "read_email": [r"\bcheck (my )?(gmail|email|inbox)\b", r"\bemail check karo\b", r"\bread (my )?email\b"],
+    "switch_chrome_profile": [
+        r"\bprofile\s+to\s+[\w\s]+",
+        r"\b(?:switch|use|change)\b.*\bprofile\b",
+        r"\bprofile\b.*\b(?:switch|use|change)\b",
+    ],
 }
 
 # Order matters: more specific intents should be checked before generic ones.
@@ -57,6 +62,7 @@ ACTION_PRIORITY = [
     "search",
     "research",
     "run_skill",
+    "switch_chrome_profile",
     "close_app",
     "open_app",
 ]
@@ -92,6 +98,11 @@ EMAIL_SUBJECT_RE = re.compile(r"\babout\s+(.+?)(?:\s+to\s+\S+@\S+|$)", re.IGNORE
 PDF_FILE_HINT_RE = re.compile(r"\b(?:this|the)\s+([\w\s]+?)\s+pdf\b", re.IGNORECASE)
 PDF_FOLDER_HINT_RE = re.compile(
     r"\bin\s+(downloads|desktop|documents)(?:\s+folder)?\b", re.IGNORECASE
+)
+PROFILE_TO_RE = re.compile(r"\bprofile\s+to\s+([\w\s]+)$", re.IGNORECASE)
+PROFILE_VERB_RE = re.compile(
+    r"\b(?:switch(?:\s+to)?|use|change(?:\s+to)?)\s+(?:the\s+)?([\w\s]+?)\s+(?:chrome\s+)?profile\b",
+    re.IGNORECASE,
 )
 
 
@@ -167,6 +178,22 @@ def _extract_pdf_hints(text: str) -> dict:
     return entities
 
 
+def _extract_chrome_profile_name(text: str) -> Optional[str]:
+    match = PROFILE_TO_RE.search(text)
+    if match:
+        name = match.group(1).strip()
+        return name or None
+    match = PROFILE_VERB_RE.search(text)
+    if match:
+        name = match.group(1).strip()
+        # "switch chrome profile" with no real name leaks the literal word
+        # "chrome" into the capture group -- that's not a profile name.
+        if name.lower() == "chrome":
+            return None
+        return name
+    return None
+
+
 def parse_intent(raw_text: str, interpreted_text: Optional[str] = None) -> Intent:
     interpreted_text = interpreted_text if interpreted_text is not None else raw_text
     normalized = _normalize(interpreted_text)
@@ -198,6 +225,10 @@ def parse_intent(raw_text: str, interpreted_text: Optional[str] = None) -> Inten
         entities.update(_extract_email_fields(cased))
     if action in ("read_pdf", "summarize"):
         entities.update(_extract_pdf_hints(cased))
+    if action == "switch_chrome_profile":
+        name = _extract_chrome_profile_name(cased)
+        if name:
+            entities["profile_name"] = name
 
     confidence = 0.85 if action != "unknown" else 0.2
 

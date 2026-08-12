@@ -144,7 +144,10 @@ you> Orbit, send it.        <- always asks for confirmation first
   picker (see below) so you pick which profile ORBIT drives that run; set it
   in `.env` to skip the picker and go straight into that profile every time.
   Run `scripts\list_chrome_profiles.ps1` to see the exact profile names
-  Chrome knows about on your PC.
+  Chrome knows about on your PC. Default in `.env.example` is
+  `Vrindavan Organics`. You can also change the active profile any time
+  just by saying it, e.g. *"switch to Rahul Soni profile"* — no `.env`
+  edit or restart needed, it takes effect on the next browser/Gmail action.
 - **A profile can only be open in one place at a time**: Chrome locks a
   profile to whichever process opened it. If "Vrindavan Organics" is already
   open in your normal Chrome window, ORBIT can't also drive it — close that

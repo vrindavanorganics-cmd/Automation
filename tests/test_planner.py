@@ -40,6 +40,23 @@ def test_plan_draft_email_without_recipient_asks_instead_of_crashing():
     assert "email address" in plan.steps[0].params["message"]
 
 
+def test_plan_switch_chrome_profile():
+    planner = TaskPlanner()
+    intent = parse_intent("switch to Rahul Soni profile")
+    plan = planner.plan(intent)
+    assert plan.steps[0].tool == "browser"
+    assert plan.steps[0].action == "switch_profile"
+    assert plan.steps[0].params == {"name": "Rahul Soni"}
+
+
+def test_plan_switch_chrome_profile_without_name_asks_instead_of_crashing():
+    planner = TaskPlanner()
+    intent = parse_intent("switch chrome profile")  # no name given -> "chrome" isn't a real profile name
+    plan = planner.plan(intent)
+    assert plan.steps[0].tool == "system"
+    assert plan.steps[0].action == "ask"
+
+
 def test_plan_summarize_with_named_file_searches_for_it():
     planner = TaskPlanner()
     intent = parse_intent("open this camscanner pdf in downloads and summarize it")

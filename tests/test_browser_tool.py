@@ -1,5 +1,6 @@
 import pytest
 
+from orbit.browser import chrome_profiles
 from orbit.tools.browser_tool import BrowserTool
 
 
@@ -60,3 +61,20 @@ def test_persistent_profile_survives_across_sessions(tmp_path, html_page):
 
     assert profile_dir.is_dir()
     assert any(profile_dir.iterdir())  # Playwright wrote real profile state to disk
+
+
+def test_switch_profile_resolves_and_restarts_session(monkeypatch):
+    monkeypatch.setattr(chrome_profiles, "resolve_profile_dir", lambda name: "Profile 1")
+    tool = BrowserTool(headless=True)
+    result = tool.run("switch_profile", {"name": "Rahul Soni"})
+    assert result.success
+    assert tool.chrome_args == ["--profile-directory=Profile 1"]
+    assert tool.channel == "chrome"
+    assert tool._controller is None
+
+
+def test_switch_profile_unknown_name_fails_cleanly(monkeypatch):
+    monkeypatch.setattr(chrome_profiles, "resolve_profile_dir", lambda name: None)
+    tool = BrowserTool(headless=True)
+    result = tool.run("switch_profile", {"name": "Nonexistent"})
+    assert not result.success

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+from orbit.browser import chrome_profiles
 from orbit.browser.playwright_controller import BrowserController
 from orbit.tools.base import Tool, ToolResult
 
@@ -51,6 +52,22 @@ class BrowserTool(Tool):
         if self._controller:
             self._controller.stop()
             self._controller = None
+
+    def do_switch_profile(self, name: str) -> ToolResult:
+        """Switch which real Chrome profile ORBIT drives, at runtime --
+        e.g. "switch to Rahul Soni profile". Restarts the browser session
+        against the newly resolved profile directory.
+        """
+        resolved = chrome_profiles.resolve_profile_dir(name)
+        if not resolved:
+            return ToolResult(
+                success=False,
+                message=f"Couldn't find a Chrome profile matching '{name}'.",
+            )
+        self.shutdown()
+        self.chrome_args = [f"--profile-directory={resolved}"]
+        self.channel = self.channel or "chrome"
+        return ToolResult(success=True, message=f"Switched Chrome profile to '{name}'.")
 
     def do_open(self, url: str = "about:blank") -> ToolResult:
         bc = self._ensure_started()

@@ -29,6 +29,18 @@ def test_cancel_send_beats_send():
     assert intent.action == "cancel_send"
 
 
+def test_switch_chrome_profile_extracts_name():
+    intent = parse_intent("switch to Vrindavan Organics profile")
+    assert intent.action == "switch_chrome_profile"
+    assert intent.entities["profile_name"] == "Vrindavan Organics"
+
+
+def test_switch_chrome_profile_to_phrasing():
+    intent = parse_intent("switch profile to Rahul Soni")
+    assert intent.action == "switch_chrome_profile"
+    assert intent.entities["profile_name"] == "Rahul Soni"
+
+
 def test_send_command():
     intent = parse_intent("send it")
     assert intent.action == "send"
