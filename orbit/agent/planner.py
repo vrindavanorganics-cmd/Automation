@@ -17,10 +17,13 @@ verification points, mirroring the ORBIT spec example:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from orbit.agent.intent import Intent
 from orbit.permissions.engine import SENSITIVE_ACTIONS
+
+if TYPE_CHECKING:
+    from orbit.agent.llm_planner import LLMPlanner
 
 
 @dataclass
@@ -53,12 +56,25 @@ def _requires_approval(action: str) -> bool:
 
 
 class TaskPlanner:
-    """Rule-based planner for V1. A cloud-LLM-backed planner can be swapped
-    in later for genuinely ambiguous multi-step requests without changing
-    the Plan/PlanStep contract that tools and the executor rely on.
+    """Rule-based planner for the actions ORBIT ships with. Genuinely
+    ambiguous or multi-step requests (action="unknown") are handed to an
+    optional LLM-backed planner instead of an immediate "please clarify" --
+    if one is configured and it can't produce a safe plan either, this
+    falls back to asking, exactly as before.
     """
 
+    def __init__(self, llm_planner: Optional["LLMPlanner"] = None):
+        self.llm_planner = llm_planner
+
     def plan(self, intent: Intent) -> Plan:
+        if intent.action == "unknown" and self.llm_planner is not None and self.llm_planner.available():
+            from orbit.agent.llm_planner import LLMPlanError  # local: avoids a planner<->llm_planner import cycle
+
+            try:
+                return self.llm_planner.plan(intent)
+            except LLMPlanError:
+                pass  # fall through to the clarification question below
+
         method = getattr(self, f"_plan_{intent.action}", None)
         if method is None:
             return self._plan_unknown(intent)

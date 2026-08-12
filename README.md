@@ -196,7 +196,7 @@ python main.py --text
 | ASR (faster-whisper) | Built, swappable via `ASREngine`, download/load path now consistent (tested against a fake `faster_whisper` module). **LOCAL WINDOWS TEST NEEDED** for real transcription (no mic here) — pipeline logic tested with `MockASREngine`. |
 | Personal vocabulary + corrections | Built and tested (fuzzy correction, raw-vs-interpreted transcript, corrections stored but never auto-applied). |
 | Intent parsing (EN/HI/Hinglish) | Built and tested with real mixed-language examples. |
-| Task planner (single-step + 8-step bulk-outreach plan) | Built and tested. |
+| Task planner (single-step + 8-step bulk-outreach plan) | Built and tested. Requests the rule-based parser can't match (`action="unknown"`) are handed to an optional LLM-backed planner (Claude, via `ANTHROPIC_API_KEY`) that proposes a plan restricted to ORBIT's real tools/actions; falls back to the original clarification question if no key is set or the LLM's answer isn't safe/parseable. Tested against a fake `anthropic` client here — never calls out to the network in this workspace. |
 | Permission engine (SAFE/SENSITIVE + confirmation) | Built and tested — sensitive actions default-deny without an explicit confirm. |
 | Verification framework | Built and tested (file-exists, text-present, window-open checks). |
 | Windows computer control | Built: `SimulatedController` fully tested here; `RealWindowsController` (pyautogui/pywinauto) is **LOCAL WINDOWS TEST NEEDED**. |

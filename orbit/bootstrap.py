@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from orbit.agent.brain import OrbitBrain
+from orbit.agent.llm_planner import LLMPlanner
 from orbit.agent.planner import TaskPlanner
 from orbit.asr.base import ASREngine
 from orbit.asr.factory import get_asr_engine
@@ -135,7 +136,7 @@ def build_orbit(
         tool_registry=tool_registry,
         permission_engine=permission_engine,
         memory=memory,
-        planner=TaskPlanner(),
+        planner=TaskPlanner(llm_planner=LLMPlanner(settings)),
     )
 
     return OrbitSystem(

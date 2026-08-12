@@ -1,5 +1,6 @@
 from orbit.agent.intent import parse_intent
-from orbit.agent.planner import TaskPlanner
+from orbit.agent.llm_planner import LLMPlanError
+from orbit.agent.planner import Plan, PlanStep, TaskPlanner
 
 
 def test_plan_open_app_single_step():
@@ -55,6 +56,65 @@ def test_plan_switch_chrome_profile_without_name_asks_instead_of_crashing():
     plan = planner.plan(intent)
     assert plan.steps[0].tool == "system"
     assert plan.steps[0].action == "ask"
+
+
+class _FakeLLMPlanner:
+    def __init__(self, plan=None, error=None, is_available=True):
+        self._plan = plan
+        self._error = error
+        self._is_available = is_available
+        self.called_with = None
+
+    def available(self):
+        return self._is_available
+
+    def plan(self, intent):
+        self.called_with = intent
+        if self._error:
+            raise self._error
+        return self._plan
+
+
+def test_unknown_intent_delegates_to_llm_planner_when_available():
+    llm_plan = Plan(summary="llm made this", steps=[PlanStep(id="1", tool="browser", action="search", params={})])
+    fake_llm = _FakeLLMPlanner(plan=llm_plan)
+    planner = TaskPlanner(llm_planner=fake_llm)
+
+    intent = parse_intent("do something ORBIT has no rule for")
+    assert intent.action == "unknown"
+    plan = planner.plan(intent)
+
+    assert plan is llm_plan
+    assert fake_llm.called_with is intent
+
+
+def test_unknown_intent_falls_back_to_clarification_when_llm_fails():
+    fake_llm = _FakeLLMPlanner(error=LLMPlanError("could not plan"))
+    planner = TaskPlanner(llm_planner=fake_llm)
+
+    intent = parse_intent("do something ORBIT has no rule for")
+    plan = planner.plan(intent)
+
+    assert plan.steps[0].tool == "system"
+    assert plan.steps[0].action == "ask_clarification"
+
+
+def test_unknown_intent_falls_back_to_clarification_when_llm_unavailable():
+    fake_llm = _FakeLLMPlanner(is_available=False)
+    planner = TaskPlanner(llm_planner=fake_llm)
+
+    intent = parse_intent("do something ORBIT has no rule for")
+    plan = planner.plan(intent)
+
+    assert plan.steps[0].action == "ask_clarification"
+    assert fake_llm.called_with is None  # never invoked -- available() gated it
+
+
+def test_unknown_intent_asks_for_clarification_without_any_llm_planner():
+    planner = TaskPlanner()  # no llm_planner configured at all -- default/offline behavior
+    intent = parse_intent("do something ORBIT has no rule for")
+    plan = planner.plan(intent)
+    assert plan.steps[0].action == "ask_clarification"
 
 
 def test_plan_summarize_with_named_file_searches_for_it():
