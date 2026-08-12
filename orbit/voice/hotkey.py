@@ -45,10 +45,17 @@ class SimulatedHotkeyListener(HotkeyListener):
 
 
 class RealHotkeyListener(HotkeyListener):
-    """Registers a real global hotkey via the `keyboard` package.
-    LOCAL WINDOWS TEST NEEDED — requires requirements/windows.txt and,
-    on Windows, typically an elevated/admin process to capture all key
+    """Registers a real global *hold-to-talk* hotkey via the `keyboard`
+    package. LOCAL WINDOWS TEST NEEDED — requires requirements/windows.txt
+    and, on Windows, typically an elevated/admin process to capture all key
     events system-wide.
+
+    `keyboard.add_hotkey()` only fires once when a combo completes -- it has
+    no notion of "still held down", so it cannot drive push-to-talk (record
+    while held, stop on release). Instead this hooks raw key events and
+    tracks which of the hotkey's own keys are currently down, firing
+    `on_press` the moment all of them are down and `on_release` the moment
+    any of them comes back up.
     """
 
     def __init__(self, hotkey: str, on_press: Callback, on_release: Optional[Callback] = None):
@@ -61,15 +68,37 @@ class RealHotkeyListener(HotkeyListener):
             ) from exc
         self._keyboard = keyboard
         self.hotkey = hotkey
+        self._keys = [part.strip().lower() for part in hotkey.split("+") if part.strip()]
         self.on_press = on_press
         self.on_release = on_release
-        self._registered = False
+        self._pressed: set[str] = set()
+        self._active = False
+        self._hook = None
+
+    def _on_event(self, event) -> None:
+        name = (event.name or "").lower()
+        if name not in self._keys:
+            return
+        if event.event_type == "down":
+            self._pressed.add(name)
+        elif event.event_type == "up":
+            self._pressed.discard(name)
+
+        all_down = all(k in self._pressed for k in self._keys)
+        if all_down and not self._active:
+            self._active = True
+            self.on_press()
+        elif not all_down and self._active:
+            self._active = False
+            if self.on_release:
+                self.on_release()
 
     def start(self) -> None:
-        self._keyboard.add_hotkey(self.hotkey, self.on_press)
-        self._registered = True
+        self._pressed = set()
+        self._active = False
+        self._hook = self._keyboard.hook(self._on_event)
 
     def stop(self) -> None:
-        if self._registered:
-            self._keyboard.remove_hotkey(self.hotkey)
-            self._registered = False
+        if self._hook is not None:
+            self._keyboard.unhook(self._hook)
+            self._hook = None

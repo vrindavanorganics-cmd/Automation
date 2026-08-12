@@ -192,8 +192,8 @@ python main.py --text
 
 | Area | Status |
 |---|---|
-| Voice hotkey / recorder / VAD abstractions | Built. Simulated backends tested here. Real backends (`keyboard`, `sounddevice`, `webrtcvad`) are **LOCAL WINDOWS TEST NEEDED**. |
-| ASR (faster-whisper) | Built, swappable via `ASREngine`. **LOCAL WINDOWS TEST NEEDED** for real transcription (no mic here) — pipeline tested with `MockASREngine`. |
+| Voice hotkey / recorder / VAD abstractions | Built and tested here against a fake `keyboard` module (hold-to-talk press/release logic). Simulated backends tested here too. Real hardware I/O (`keyboard`, `sounddevice`, `webrtcvad`) is **LOCAL WINDOWS TEST NEEDED**. |
+| ASR (faster-whisper) | Built, swappable via `ASREngine`, download/load path now consistent (tested against a fake `faster_whisper` module). **LOCAL WINDOWS TEST NEEDED** for real transcription (no mic here) — pipeline logic tested with `MockASREngine`. |
 | Personal vocabulary + corrections | Built and tested (fuzzy correction, raw-vs-interpreted transcript, corrections stored but never auto-applied). |
 | Intent parsing (EN/HI/Hinglish) | Built and tested with real mixed-language examples. |
 | Task planner (single-step + 8-step bulk-outreach plan) | Built and tested. |

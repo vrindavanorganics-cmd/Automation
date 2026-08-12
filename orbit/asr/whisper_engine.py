@@ -7,7 +7,8 @@ workspace — this is exercised only after local install.
 """
 from __future__ import annotations
 
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Union
 
 from orbit.asr.base import ASREngine, AudioInput, TranscriptionResult, TranscriptSegment
 
@@ -18,7 +19,13 @@ SUPPORTED_LANGUAGES = {"en": "english", "hi": "hindi"}
 class FasterWhisperEngine(ASREngine):
     name = "faster-whisper"
 
-    def __init__(self, model_size: str = "small", device: str = "cpu", compute_type: str = "int8"):
+    def __init__(
+        self,
+        model_size: str = "small",
+        device: str = "cpu",
+        compute_type: str = "int8",
+        download_root: Optional[Union[str, Path]] = None,
+    ):
         try:
             from faster_whisper import WhisperModel  # type: ignore
         except ImportError as exc:  # pragma: no cover - only reachable without the optional dep
@@ -30,7 +37,12 @@ class FasterWhisperEngine(ASREngine):
 
         self.model_size = model_size
         self.device = device
-        self._model = WhisperModel(model_size, device=device, compute_type=compute_type)
+        # Must match the download_root scripts/download_asr_model.py used --
+        # otherwise the model downloaded there is never found here, and
+        # faster-whisper silently re-downloads (or fails offline) instead.
+        self._model = WhisperModel(
+            model_size, device=device, compute_type=compute_type, download_root=str(download_root) if download_root else None
+        )
 
     def transcribe(self, audio: AudioInput, language: Optional[str] = None) -> TranscriptionResult:
         lang = None if (language in (None, "auto")) else language

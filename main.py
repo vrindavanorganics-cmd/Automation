@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 
 from orbit.bootstrap import build_orbit
 from orbit.config import settings
@@ -61,17 +62,23 @@ def run_voice_mode() -> None:
 
     def on_release() -> None:
         audio_bytes = recorder.stop()
+        if not audio_bytes:
+            print("(heard nothing -- try holding the hotkey a bit longer)")
+            return
         wav_path = system.settings.data_dir / "last_command.wav"
         recorder.save_wav(wav_path, audio_bytes)
-        response = system.brain.process_voice_command(str(wav_path))
-        print(f"orbit> {response.text}")
+        try:
+            response = system.brain.process_voice_command(str(wav_path))
+            print(f"orbit> {response.text}")
+        except Exception as exc:  # one bad turn must not kill the whole voice loop
+            print(f"(error handling that command: {exc})", file=sys.stderr)
 
     listener = RealHotkeyListener(settings.hotkey, on_press=on_press, on_release=on_release)
     listener.start()
     print(f"ORBIT is running. Hold {settings.hotkey} to talk. Ctrl+C to quit.")
     try:
         while True:
-            pass
+            time.sleep(0.2)
     except KeyboardInterrupt:
         pass
     finally:

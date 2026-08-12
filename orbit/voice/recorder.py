@@ -61,8 +61,11 @@ class RealAudioRecorder(AudioRecorder):
 
     def start(self) -> None:
         self._frames = []
+        # int16 explicitly -- `save_wav` writes 16-bit PCM (sampwidth=2).
+        # sounddevice defaults to float32, which would silently produce a
+        # corrupt/garbled WAV file if written out with a 16-bit header.
         self._stream = self._sd.InputStream(
-            samplerate=self.samplerate, channels=self.channels, callback=self._callback
+            samplerate=self.samplerate, channels=self.channels, dtype="int16", callback=self._callback
         )
         self._stream.start()
 
