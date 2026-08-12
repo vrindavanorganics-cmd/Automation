@@ -1,4 +1,4 @@
-from orbit.windows.app_registry import AppRegistry
+from orbit.windows.app_registry import AppRegistry, find_executable
 from orbit.windows.control import SimulatedController, get_controller
 
 
@@ -71,3 +71,28 @@ def test_app_registry_resolve_edge_by_alias():
     entry = registry.resolve("edge")
     assert entry is not None
     assert entry.name == "Microsoft Edge"
+
+
+def test_find_executable_is_noop_off_windows():
+    # find_executable is Windows-only (registry lookup + install-root
+    # search); everywhere else it must return None rather than error.
+    assert find_executable("chrome.exe") is None
+
+
+def test_resolve_or_guess_known_app_returns_registry_entry():
+    registry = AppRegistry()
+    entry, _ = registry.resolve_or_guess("chrome")
+    assert entry is not None
+    assert entry.name == "Google Chrome"
+
+
+def test_resolve_or_guess_unknown_app_falls_back_to_live_lookup():
+    # "spotify" isn't in the curated registry at all -- resolve_or_guess
+    # should still try to locate it live (find_executable), not just fail.
+    registry = AppRegistry()
+    entry, guessed_path = registry.resolve_or_guess("spotify")
+    assert entry is None
+    # No real Windows lookup happens off Windows, so this is None here --
+    # the point is that resolve_or_guess doesn't raise and returns the
+    # (entry, path) shape callers rely on.
+    assert guessed_path is None

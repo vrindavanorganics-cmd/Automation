@@ -2,14 +2,106 @@
 launch method. Detection of actually-installed apps only works on Windows;
 elsewhere the registry is still usable (data-driven, testable) but
 `installed` stays unknown (None).
+
+Locating an installed app's real path (`find_executable`) tries, in order:
+  1. The Windows "App Paths" registry -- the same mechanism the Start Menu
+     and Win+R "Run" dialog use to resolve a bare name like "chrome" to its
+     real install location. This is authoritative and works regardless of
+     which folder an app happens to be installed in.
+  2. PATH (shutil.which).
+  3. A short list of common install locations, if the caller supplied any.
+  4. A bounded search of the usual install roots (Program Files, per-user
+     Programs, etc.) for a file with that exact name -- a last resort for
+     apps that don't register themselves properly, capped in depth so it
+     can't turn into a full-disk crawl.
 """
 from __future__ import annotations
 
+import os
 import platform
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+
+# Roots searched by the bounded filesystem fallback, and consulted for
+# %ENV%-style expansion when building common_paths entries.
+_SEARCH_ROOTS = [
+    r"%ProgramFiles%",
+    r"%ProgramFiles(x86)%",
+    r"%LOCALAPPDATA%\Programs",
+    r"%LOCALAPPDATA%",
+    r"%APPDATA%",
+]
+_MAX_SEARCH_DEPTH = 4
+
+
+def _query_app_paths_registry(executable: str) -> Optional[str]:
+    """Looks up HKCU/HKLM ...\\App Paths\\<executable> -- the registry key
+    Windows itself uses to resolve a bare executable name. Returns the
+    real path on a hit, or None (including on any non-Windows platform,
+    or if the `winreg` lookup fails for any reason).
+    """
+    try:
+        import winreg  # type: ignore
+    except ImportError:
+        return None
+
+    subkey = rf"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\{executable}"
+    for hive in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+        try:
+            with winreg.OpenKey(hive, subkey) as key:
+                value, _ = winreg.QueryValueEx(key, "")
+                if value and Path(value).exists():
+                    return value
+        except (FileNotFoundError, OSError):
+            continue
+    return None
+
+
+def _search_common_roots(executable: str) -> Optional[str]:
+    """Bounded search of the usual install directories for a file with this
+    exact name. Depth-limited so it stays fast -- this is a last resort,
+    not a substitute for the registry lookup above.
+    """
+    target = executable.lower()
+    for raw_root in _SEARCH_ROOTS:
+        root = Path(os.path.expandvars(raw_root))
+        if not root.is_dir():
+            continue
+        root_depth = len(root.parts)
+        for dirpath, dirnames, filenames in os.walk(root):
+            depth = len(Path(dirpath).parts) - root_depth
+            if depth >= _MAX_SEARCH_DEPTH:
+                dirnames[:] = []
+                continue
+            for filename in filenames:
+                if filename.lower() == target:
+                    return str(Path(dirpath) / filename)
+    return None
+
+
+def find_executable(executable: str, common_paths: Optional[list[str]] = None) -> Optional[str]:
+    """Locates a Windows executable by name. Returns None on any
+    non-Windows platform, or if every lookup strategy comes up empty.
+    """
+    if platform.system() != "Windows":
+        return None
+
+    found = _query_app_paths_registry(executable)
+    if found:
+        return found
+
+    found = shutil.which(executable)
+    if found:
+        return found
+
+    for raw_path in common_paths or []:
+        expanded = os.path.expandvars(raw_path)
+        if Path(expanded).exists():
+            return expanded
+
+    return _search_common_roots(executable)
 
 
 @dataclass
@@ -28,11 +120,6 @@ DEFAULT_APPS: list[AppEntry] = [
         name="Google Chrome",
         executable="chrome.exe",
         common_paths=[
-            # Per-user install location -- this is the DEFAULT location for
-            # a standard (non-admin) Chrome install on Windows, and was
-            # missing here entirely, so detect_installed() found nothing
-            # and every launch fell back to a bare "chrome.exe" that
-            # Windows can't locate.
             r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe",
             r"C:\Program Files\Google\Chrome\Application\chrome.exe",
             r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
@@ -123,15 +210,22 @@ class AppRegistry:
         """
         if platform.system() != "Windows":
             return
-        import os
-
         for app in self.apps.values():
-            found = shutil.which(app.executable)
-            if not found:
-                for raw_path in app.common_paths:
-                    expanded = os.path.expandvars(raw_path)
-                    if Path(expanded).exists():
-                        found = expanded
-                        break
-            app.installed = bool(found)
-            app.resolved_path = found
+            app.resolved_path = find_executable(app.executable, app.common_paths)
+            app.installed = bool(app.resolved_path)
+
+    def resolve_or_guess(self, name_or_alias: str) -> tuple[Optional[AppEntry], Optional[str]]:
+        """Like resolve(), but for a name that isn't in the curated
+        registry at all (e.g. "spotify"), also tries to locate it live on
+        this Windows PC by guessing an executable name. Returns
+        (matched AppEntry or None, resolved full path or None).
+        """
+        entry = self.resolve(name_or_alias)
+        if entry:
+            return entry, entry.resolved_path
+        guess = name_or_alias.strip().lower().replace(" ", "")
+        if not guess:
+            return None, None
+        if not guess.endswith(".exe"):
+            guess += ".exe"
+        return None, find_executable(guess)
