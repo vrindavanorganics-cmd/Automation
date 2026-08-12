@@ -57,6 +57,32 @@ class OrbitDesktopApp:
         self.system.brain.stop()
 
 
+def _show_startup_error(title: str, message: str) -> None:
+    """Reports a startup failure when there may be no console to print to
+    -- the shortcut launches via pythonw.exe specifically so no console
+    window flashes up, which also means a normal traceback is invisible.
+    Tries a Tk message box first, then falls back to a native Win32
+    MessageBox (ctypes, no Tkinter required) so a crash is never silent.
+    """
+    try:
+        import tkinter as tk
+        from tkinter import messagebox
+
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showerror(title, message)
+        root.destroy()
+        return
+    except Exception:
+        pass
+    try:
+        import ctypes
+
+        ctypes.windll.user32.MessageBoxW(0, message, title, 0x10)  # MB_ICONERROR
+    except Exception:
+        pass
+
+
 def run_gui_mode() -> None:
     """Real entry point for `python main.py --gui`. Fails fast with a
     clear message if run anywhere without a desktop -- it does not
@@ -74,6 +100,31 @@ def run_gui_mode() -> None:
         )
         sys.exit(1)
 
+    try:
+        _run_gui_mode_impl()
+    except Exception as exc:
+        import traceback
+
+        from orbit.config import settings as _settings
+
+        detail = traceback.format_exc()
+        log_path = None
+        try:
+            log_dir = _settings.data_dir / "logs"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_path = log_dir / "gui_crash.log"
+            log_path.write_text(detail)
+        except Exception:
+            pass
+
+        message = f"ORBIT failed to start:\n\n{exc}\n\n"
+        message += f"Full details saved to:\n{log_path}" if log_path else detail
+        _show_startup_error("ORBIT failed to start", message)
+        print(detail, file=sys.stderr)
+        raise
+
+
+def _run_gui_mode_impl() -> None:
     import tkinter as tk
     from tkinter import messagebox, scrolledtext
 
