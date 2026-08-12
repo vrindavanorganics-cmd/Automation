@@ -20,9 +20,44 @@ def test_plan_send_requires_approval():
 
 def test_plan_draft_email_no_approval():
     planner = TaskPlanner()
+    intent = parse_intent("draft email as hello testing to buyer@example.com")
+    plan = planner.plan(intent)
+    assert plan.steps[0].tool == "email"
+    assert plan.steps[0].action == "draft"
+    assert plan.steps[0].params == {"to": "buyer@example.com", "subject": "hello testing", "body": "hello testing"}
+    assert plan.steps[0].requires_approval is False
+
+
+def test_plan_draft_email_without_recipient_asks_instead_of_crashing():
+    # Regression: EmailTool.do_draft requires to/subject/body -- calling it
+    # with no params raised a raw Python TypeError shown to the user
+    # instead of a clear, actionable question.
+    planner = TaskPlanner()
     intent = parse_intent("draft an email")
     plan = planner.plan(intent)
-    assert plan.steps[0].requires_approval is False
+    assert plan.steps[0].tool == "system"
+    assert plan.steps[0].action == "ask"
+    assert "email address" in plan.steps[0].params["message"]
+
+
+def test_plan_summarize_with_named_file_searches_for_it():
+    planner = TaskPlanner()
+    intent = parse_intent("open this camscanner pdf in downloads and summarize it")
+    plan = planner.plan(intent)
+    assert plan.steps[0].tool == "pdf"
+    assert plan.steps[0].action == "find_and_summarize"
+    assert plan.steps[0].params == {"hint": "camscanner", "folder_hint": "downloads"}
+
+
+def test_plan_summarize_without_named_file_uses_most_recent():
+    # Regression: PdfTool.do_summarize requires a `path` -- calling it with
+    # no params raised a raw Python TypeError instead of finding a file.
+    planner = TaskPlanner()
+    intent = parse_intent("open this PDF and summarize it")
+    plan = planner.plan(intent)
+    assert plan.steps[0].tool == "pdf"
+    assert plan.steps[0].action == "find_and_summarize"
+    assert plan.steps[0].params == {"hint": "", "folder_hint": None}
 
 
 def test_plan_unknown_asks_clarification():

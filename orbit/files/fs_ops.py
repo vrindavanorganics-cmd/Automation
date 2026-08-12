@@ -7,6 +7,7 @@ import fnmatch
 import hashlib
 import shutil
 from pathlib import Path
+from typing import Optional
 
 
 def create_folder(path: str | Path) -> Path:
@@ -73,6 +74,51 @@ def find_by_keyword(directory: str | Path, keyword: str) -> list[Path]:
         return []
     keyword = keyword.lower()
     return sorted(p for p in d.rglob("*") if p.is_file() and keyword in p.name.lower())
+
+
+def default_search_dirs() -> dict[str, Path]:
+    home = Path.home()
+    return {
+        "downloads": home / "Downloads",
+        "desktop": home / "Desktop",
+        "documents": home / "Documents",
+    }
+
+
+def find_file_in_common_locations(
+    hint: str,
+    folder_hint: Optional[str] = None,
+    extensions: tuple[str, ...] = (),
+) -> Optional[Path]:
+    """Finds a file by a loose name hint (e.g. "camscanner") across the
+    user's usual folders (Downloads/Desktop/Documents), so a voice command
+    like "summarize the camscanner pdf in downloads" doesn't require an
+    exact path. Picks the most recently modified match when there's more
+    than one. An empty hint matches every file with a matching extension --
+    i.e. "the most recently modified one" -- covering "summarize this PDF"
+    with no name given (usually means "the one I just got"). Returns None
+    if nothing matches.
+    """
+    dirs = default_search_dirs()
+    search_dirs = [dirs[folder_hint]] if folder_hint and folder_hint in dirs else list(dirs.values())
+    hint_lower = hint.strip().lower()
+
+    candidates: list[Path] = []
+    for d in search_dirs:
+        if not d.is_dir():
+            continue
+        for p in d.rglob("*"):
+            if not p.is_file():
+                continue
+            if extensions and p.suffix.lower() not in extensions:
+                continue
+            if hint_lower in p.name.lower():
+                candidates.append(p)
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return candidates[0]
 
 
 # Default extension -> category mapping used by organize_by_type.

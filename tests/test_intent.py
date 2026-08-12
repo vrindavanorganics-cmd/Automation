@@ -52,3 +52,36 @@ def test_search_query_extraction_preserves_case():
     intent = parse_intent("search for Ekagya Exports")
     assert intent.action == "search"
     assert intent.entities["query"] == "Ekagya Exports"
+
+
+def test_draft_email_extracts_recipient_body_and_subject():
+    intent = parse_intent("draft email as hello testing to rahulsoni0857@gmail.com")
+    assert intent.action == "draft_email"
+    assert intent.entities["to"] == "rahulsoni0857@gmail.com"
+    assert intent.entities["body"] == "hello testing"
+    assert intent.entities["subject"] == "hello testing"
+
+
+def test_draft_email_extracts_subject_from_about_clause():
+    intent = parse_intent("draft an email about the quotation to buyer@example.com")
+    assert intent.entities["to"] == "buyer@example.com"
+    assert intent.entities["subject"] == "the quotation"
+
+
+def test_draft_email_without_recipient_has_no_to_entity():
+    intent = parse_intent("draft an email")
+    assert intent.action == "draft_email"
+    assert "to" not in intent.entities
+
+
+def test_summarize_extracts_file_and_folder_hint():
+    intent = parse_intent("open this camscanner pdf in downloads and summarize it")
+    assert intent.action == "summarize"
+    assert intent.entities["file_hint"] == "camscanner"
+    assert intent.entities["folder_hint"] == "downloads"
+
+
+def test_summarize_without_named_file_has_no_hint():
+    intent = parse_intent("open this PDF and summarize it")
+    assert intent.action == "summarize"
+    assert "file_hint" not in intent.entities

@@ -86,6 +86,14 @@ LANGUAGE_HINDI_HINTS = [
 
 DEVANAGARI_RE = re.compile(r"[ऀ-ॿ]")
 
+EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+EMAIL_BODY_RE = re.compile(r"\b(?:as|saying)\s+(.+?)\s+to\s+\S+@\S+", re.IGNORECASE)
+EMAIL_SUBJECT_RE = re.compile(r"\babout\s+(.+?)(?:\s+to\s+\S+@\S+|$)", re.IGNORECASE)
+PDF_FILE_HINT_RE = re.compile(r"\b(?:this|the)\s+([\w\s]+?)\s+pdf\b", re.IGNORECASE)
+PDF_FOLDER_HINT_RE = re.compile(
+    r"\bin\s+(downloads|desktop|documents)(?:\s+folder)?\b", re.IGNORECASE
+)
+
 
 @dataclass
 class Intent:
@@ -127,6 +135,38 @@ def _extract_folder_name(text: str) -> Optional[str]:
     return None
 
 
+def _extract_email_fields(text: str) -> dict:
+    entities: dict = {}
+    email_match = EMAIL_RE.search(text)
+    if email_match:
+        entities["to"] = email_match.group(0)
+
+    body_match = EMAIL_BODY_RE.search(text)
+    if body_match:
+        entities["body"] = body_match.group(1).strip()
+
+    subject_match = EMAIL_SUBJECT_RE.search(text)
+    if subject_match:
+        entities["subject"] = subject_match.group(1).strip()
+    elif "body" in entities:
+        entities["subject"] = entities["body"][:60]
+
+    return entities
+
+
+def _extract_pdf_hints(text: str) -> dict:
+    entities: dict = {}
+    hint_match = PDF_FILE_HINT_RE.search(text)
+    if hint_match:
+        hint = hint_match.group(1).strip()
+        if hint:
+            entities["file_hint"] = hint
+    folder_match = PDF_FOLDER_HINT_RE.search(text)
+    if folder_match:
+        entities["folder_hint"] = folder_match.group(1).strip().lower()
+    return entities
+
+
 def parse_intent(raw_text: str, interpreted_text: Optional[str] = None) -> Intent:
     interpreted_text = interpreted_text if interpreted_text is not None else raw_text
     normalized = _normalize(interpreted_text)
@@ -154,6 +194,10 @@ def parse_intent(raw_text: str, interpreted_text: Optional[str] = None) -> Inten
         m = re.search(r"(?:search|find|research|khojo|dhundo)\s+(?:for\s+)?(.+)", cased, re.IGNORECASE)
         if m:
             entities["query"] = m.group(1).strip()
+    if action == "draft_email":
+        entities.update(_extract_email_fields(cased))
+    if action in ("read_pdf", "summarize"):
+        entities.update(_extract_pdf_hints(cased))
 
     confidence = 0.85 if action != "unknown" else 0.2
 

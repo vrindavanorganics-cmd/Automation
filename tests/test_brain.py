@@ -44,7 +44,9 @@ def test_demo_pdf_summarize_plan_shape(system):
     response = system.brain.process_text_command("Orbit, open this PDF and summarize it.")
     assert response.intent.action == "summarize"
     assert response.plan.steps[0].tool == "pdf"
-    assert response.plan.steps[0].action == "summarize"
+    # No filename was named, so this searches for (and summarizes) the most
+    # recently modified PDF in the user's usual folders.
+    assert response.plan.steps[0].action == "find_and_summarize"
 
 
 def test_demo_create_excel_sheet(system):

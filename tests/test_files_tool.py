@@ -71,3 +71,54 @@ def test_pdf_summarize_text_long_picks_subset():
     text = " ".join([f"Sentence number {i} talks about business exports and quotations." for i in range(20)])
     summary = pdf_ops.summarize_text(text, max_sentences=3)
     assert len(pdf_ops._split_sentences(summary)) <= 3
+
+
+def test_find_file_in_common_locations_by_hint(tmp_path, monkeypatch):
+    monkeypatch.setattr(fs_ops.Path, "home", classmethod(lambda cls: tmp_path))
+    downloads = tmp_path / "Downloads"
+    downloads.mkdir()
+    fs_ops.create_file(downloads / "unrelated.pdf", "x")
+    fs_ops.create_file(downloads / "Ekagya_Camscanner_Quotation.pdf", "x")
+
+    found = fs_ops.find_file_in_common_locations("camscanner", extensions=(".pdf",))
+
+    assert found is not None
+    assert found.name == "Ekagya_Camscanner_Quotation.pdf"
+
+
+def test_find_file_in_common_locations_respects_folder_hint(tmp_path, monkeypatch):
+    monkeypatch.setattr(fs_ops.Path, "home", classmethod(lambda cls: tmp_path))
+    downloads = tmp_path / "Downloads"
+    desktop = tmp_path / "Desktop"
+    downloads.mkdir()
+    desktop.mkdir()
+    fs_ops.create_file(downloads / "invoice.pdf", "x")
+    fs_ops.create_file(desktop / "invoice.pdf", "x")
+
+    found = fs_ops.find_file_in_common_locations("invoice", folder_hint="desktop", extensions=(".pdf",))
+
+    assert found is not None
+    assert found.parent == desktop
+
+
+def test_find_file_in_common_locations_empty_hint_returns_most_recent(tmp_path, monkeypatch):
+    import time
+
+    monkeypatch.setattr(fs_ops.Path, "home", classmethod(lambda cls: tmp_path))
+    downloads = tmp_path / "Downloads"
+    downloads.mkdir()
+    older = fs_ops.create_file(downloads / "older.pdf", "x")
+    time.sleep(0.01)
+    newer = fs_ops.create_file(downloads / "newer.pdf", "x")
+
+    found = fs_ops.find_file_in_common_locations("", extensions=(".pdf",))
+
+    assert found == newer
+    assert found != older
+
+
+def test_find_file_in_common_locations_no_match_returns_none(tmp_path, monkeypatch):
+    monkeypatch.setattr(fs_ops.Path, "home", classmethod(lambda cls: tmp_path))
+    (tmp_path / "Downloads").mkdir()
+
+    assert fs_ops.find_file_in_common_locations("nonexistent", extensions=(".pdf",)) is None

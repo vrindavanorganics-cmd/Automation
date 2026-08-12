@@ -113,12 +113,29 @@ class TaskPlanner:
         return Plan(summary="Create file", steps=[step], source_intent=intent)
 
     def _plan_read_pdf(self, intent: Intent) -> Plan:
-        step = PlanStep(id="1", tool="pdf", action="read", params={}, description="Read PDF")
-        return Plan(summary="Read PDF", steps=[step], source_intent=intent)
+        # An empty hint means "no name given" -- find_and_read then falls
+        # back to the most recently modified PDF (usually "the one I just
+        # got"), rather than making the user name the file every time.
+        hint = intent.entities.get("file_hint", "")
+        step = PlanStep(
+            id="1",
+            tool="pdf",
+            action="find_and_read",
+            params={"hint": hint, "folder_hint": intent.entities.get("folder_hint")},
+            description=f"Read PDF matching '{hint}'" if hint else "Read the most recent PDF",
+        )
+        return Plan(summary=step.description, steps=[step], source_intent=intent)
 
     def _plan_summarize(self, intent: Intent) -> Plan:
-        step = PlanStep(id="1", tool="pdf", action="summarize", params={}, description="Summarize document")
-        return Plan(summary="Summarize document", steps=[step], source_intent=intent)
+        hint = intent.entities.get("file_hint", "")
+        step = PlanStep(
+            id="1",
+            tool="pdf",
+            action="find_and_summarize",
+            params={"hint": hint, "folder_hint": intent.entities.get("folder_hint")},
+            description=f"Summarize PDF matching '{hint}'" if hint else "Summarize the most recent PDF",
+        )
+        return Plan(summary=step.description, steps=[step], source_intent=intent)
 
     def _plan_create_excel(self, intent: Intent) -> Plan:
         step = PlanStep(
@@ -132,10 +149,24 @@ class TaskPlanner:
         return Plan(summary="Create Excel sheet", steps=[step], source_intent=intent)
 
     def _plan_draft_email(self, intent: Intent) -> Plan:
+        to = intent.entities.get("to")
+        if not to:
+            return self._ask(
+                "Who should I send this to? Include an email address, e.g. "
+                "'draft email to buyer@example.com saying thanks for your order'.",
+                intent,
+            )
+        body = intent.entities.get("body", "")
+        subject = intent.entities.get("subject") or (body[:60] if body else "(no subject)")
         step = PlanStep(
-            id="1", tool="email", action="draft", params={}, description="Draft email", requires_approval=False
+            id="1",
+            tool="email",
+            action="draft",
+            params={"to": to, "subject": subject, "body": body},
+            description=f"Draft email to {to}",
+            requires_approval=False,
         )
-        return Plan(summary="Draft email", steps=[step], source_intent=intent)
+        return Plan(summary=f"Draft email to {to}", steps=[step], source_intent=intent)
 
     def _plan_read_email(self, intent: Intent) -> Plan:
         step = PlanStep(id="1", tool="email", action="read", params={}, description="Check inbox")
@@ -193,6 +224,15 @@ class TaskPlanner:
             description="Ask the user to clarify the command",
         )
         return Plan(summary="Clarification needed", steps=[step], source_intent=intent)
+
+    def _ask(self, message: str, intent: Intent) -> Plan:
+        """Used when an action was understood but is missing a required
+        detail (recipient, filename, ...) -- asks instead of failing.
+        """
+        step = PlanStep(
+            id="1", tool="system", action="ask", params={"message": message}, description="Ask for missing detail"
+        )
+        return Plan(summary="Need more detail", steps=[step], source_intent=intent)
 
     # ---- complex multi-step plan builder (spec example: bulk outreach) ----
 

@@ -18,6 +18,12 @@ class SystemTool(Tool):
     def do_ask_clarification(self, heard: str = "") -> ToolResult:
         return ToolResult.ok(f"I didn't understand that command: '{heard}'. Could you rephrase?", heard=heard)
 
+    def do_ask(self, message: str) -> ToolResult:
+        """Like ask_clarification, but for when the command WAS understood
+        and only a missing detail (recipient, filename, ...) is needed.
+        """
+        return ToolResult.ok(message)
+
     def do_show_summary(self, **details) -> ToolResult:
         return ToolResult.ok("Summary shown", **details)
 
