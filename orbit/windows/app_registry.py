@@ -28,6 +28,12 @@ DEFAULT_APPS: list[AppEntry] = [
         name="Google Chrome",
         executable="chrome.exe",
         common_paths=[
+            # Per-user install location -- this is the DEFAULT location for
+            # a standard (non-admin) Chrome install on Windows, and was
+            # missing here entirely, so detect_installed() found nothing
+            # and every launch fell back to a bare "chrome.exe" that
+            # Windows can't locate.
+            r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe",
             r"C:\Program Files\Google\Chrome\Application\chrome.exe",
             r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
         ],
