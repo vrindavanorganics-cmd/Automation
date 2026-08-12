@@ -14,6 +14,7 @@ from orbit.agent.planner import TaskPlanner
 from orbit.asr.base import ASREngine
 from orbit.asr.factory import get_asr_engine
 from orbit.asr.vocabulary import VocabularyStore
+from orbit.browser.chrome_profiles import chrome_user_data_dir, resolve_profile_dir
 from orbit.config import Settings
 from orbit.config import settings as default_settings
 from orbit.email.sender import BrowserGmailSender, EmailSender, MockEmailSender
@@ -84,8 +85,33 @@ def build_orbit(
     tool_registry.register(FilesTool(base_dir=str(settings.data_dir)))
     tool_registry.register(PdfTool())
     tool_registry.register(ExcelTool(base_dir=str(settings.data_dir)))
+
+    # On a real Windows run, drive the user's actual, already-signed-in
+    # Chrome (their real profiles -- Gmail, bookmarks, everything already
+    # logged in) instead of a separate blank automation profile. If
+    # ORBIT_CHROME_PROFILE names a profile, go straight into it; otherwise
+    # Chrome shows its own "Who's using Chrome?" picker so the user picks.
+    # Note: a profile already open in the user's regular Chrome can't also
+    # be opened here -- Chrome locks each profile to one running process.
+    real_chrome_root = chrome_user_data_dir() if is_real_windows else None
+    if real_chrome_root:
+        browser_profile_dir = str(real_chrome_root)
+        browser_channel: Optional[str] = "chrome"
+        chrome_args = None
+        if settings.chrome_profile:
+            folder = resolve_profile_dir(settings.chrome_profile)
+            if folder:
+                chrome_args = [f"--profile-directory={folder}"]
+    else:
+        browser_profile_dir = str(settings.data_dir / "browser_profile")
+        browser_channel = None
+        chrome_args = None
+
     browser_tool = BrowserTool(
-        headless=effective_headless, profile_dir=str(settings.data_dir / "browser_profile")
+        headless=effective_headless,
+        profile_dir=browser_profile_dir,
+        channel=browser_channel,
+        chrome_args=chrome_args,
     )
     tool_registry.register(browser_tool)
     tool_registry.register(SystemTool())

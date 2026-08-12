@@ -50,6 +50,11 @@ class Settings:
     )
     hotkey: str = field(default_factory=lambda: os.environ.get("ORBIT_HOTKEY", "ctrl+shift+space"))
 
+    # If set (e.g. "Vrindavan Organics"), ORBIT drives that real, already
+    # signed-in Chrome profile directly instead of showing Chrome's profile
+    # picker each time. Leave unset to have Chrome ask which profile to use.
+    chrome_profile: str | None = field(default_factory=lambda: os.environ.get("ORBIT_CHROME_PROFILE") or None)
+
     def __post_init__(self) -> None:
         if not isinstance(self.data_dir, Path):
             object.__setattr__(self, "data_dir", Path(self.data_dir).resolve())

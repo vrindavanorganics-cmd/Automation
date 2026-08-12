@@ -137,15 +137,19 @@ you> Orbit, send it.        <- always asks for confirmation first
   accessibility permissions the first time they control another window.
 - **Global hotkey**: the `keyboard` library can require running the terminal as
   Administrator to capture hotkeys system-wide (outside the focused window).
-- **Browser automation**: the first Playwright-driven Chrome session may prompt to
-  set a default browser profile — use a dedicated profile for ORBIT rather than
-  your personal daily-driver Chrome profile, especially before enabling Gmail
-  sending.
-- **Gmail login**: on Windows, ORBIT's browser tool runs with a real, persistent
-  profile at `data/browser_profile` (not headless) so a Gmail login sticks
-  across runs. The first time you draft or send an email, a real Chrome window
-  opens to `mail.google.com` — log into your Google account there once. After
-  that, "draft an email" / "send it" drive that same logged-in window.
+- **Browser automation uses your real Chrome, not a separate one**: on Windows,
+  ORBIT launches your actual installed Google Chrome pointed at your actual
+  profiles — the same ones you already use, already signed into Gmail. With
+  `ORBIT_CHROME_PROFILE` unset, Chrome shows its own "Who's using Chrome?"
+  picker (see below) so you pick which profile ORBIT drives that run; set it
+  in `.env` to skip the picker and go straight into that profile every time.
+  Run `scripts\list_chrome_profiles.ps1` to see the exact profile names
+  Chrome knows about on your PC.
+- **A profile can only be open in one place at a time**: Chrome locks a
+  profile to whichever process opened it. If "Vrindavan Organics" is already
+  open in your normal Chrome window, ORBIT can't also drive it — close that
+  window first (other profiles/windows can stay open; only the one ORBIT
+  needs has to be free).
 
 ## 8. Troubleshooting
 
@@ -156,7 +160,8 @@ you> Orbit, send it.        <- always asks for confirmation first
 | `RuntimeError: RealWindowsController can only run on Windows` | Expected on Linux/macOS — use `--text` mode or set `ORBIT_FORCE_SIMULATED=true` |
 | Playwright browser fails to launch | `python -m playwright install chromium` |
 | Gmail draft/send automation breaks | Gmail's DOM changes over time — `orbit/email/sender.py`'s `BrowserGmailSender` selectors may need updating; this is the one piece of code in the repo that cannot be verified until you test it against a real, logged-in Gmail session. `EmailTool.do_draft`'s response tells you honestly whether the live Gmail action succeeded ("opened in Gmail") or only the local record was kept ("local draft only" / an error) |
-| Email drafts locally but Gmail shows nothing | You aren't logged into Google in ORBIT's browser profile yet — draft/send once to trigger the login window, sign in, then retry |
+| Email drafts locally but Gmail shows nothing | You aren't logged into Google in the Chrome profile ORBIT used — pick (or configure via `ORBIT_CHROME_PROFILE`) a profile that's already signed into that Gmail account |
+| Browser action does nothing / errors about profile in use | The Chrome profile ORBIT is trying to use is already open in one of your normal Chrome windows — close that window first, then retry |
 | Memory database locked | Only one ORBIT process should hold `data/memory/orbit.db` at a time |
 
 ## 9. Local testing commands

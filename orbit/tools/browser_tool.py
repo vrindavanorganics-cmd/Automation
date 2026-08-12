@@ -16,14 +16,27 @@ from orbit.tools.base import Tool, ToolResult
 class BrowserTool(Tool):
     name = "browser"
 
-    def __init__(self, headless: bool = True, profile_dir: Optional[str] = None):
+    def __init__(
+        self,
+        headless: bool = True,
+        profile_dir: Optional[str] = None,
+        channel: Optional[str] = None,
+        chrome_args: Optional[list[str]] = None,
+    ):
         self.headless = headless
         self.profile_dir = profile_dir
+        self.channel = channel
+        self.chrome_args = chrome_args
         self._controller: Optional[BrowserController] = None
 
     def _ensure_started(self) -> BrowserController:
         if self._controller is None:
-            self._controller = BrowserController(headless=self.headless, profile_dir=self.profile_dir)
+            self._controller = BrowserController(
+                headless=self.headless,
+                profile_dir=self.profile_dir,
+                channel=self.channel,
+                chrome_args=self.chrome_args,
+            )
             self._controller.start()
         return self._controller
 

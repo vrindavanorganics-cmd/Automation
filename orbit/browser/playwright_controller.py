@@ -47,6 +47,16 @@ class BrowserController:
     way a normal browser profile would. Without it, each session starts
     from a clean slate (used for headless search/summarize/scrape tasks
     that don't need any login state).
+
+    With `channel="chrome"`, launches the user's actual installed Google
+    Chrome application (not Playwright's bundled Chromium) -- combined with
+    `profile_dir` pointed at Chrome's real "User Data" folder, this drives
+    the user's real, already-signed-in Chrome profiles. Passing
+    `chrome_args=["--profile-directory=Profile 1"]` opens straight into a
+    specific one; omitting it lets Chrome show its own profile picker so
+    the user picks which profile ORBIT should use. Note: Chrome locks a
+    profile to one running process -- this fails or is ignored if that
+    exact profile is already open in another Chrome window.
     """
 
     def __init__(
@@ -55,11 +65,15 @@ class BrowserController:
         browser_type: str = "chromium",
         executable_path: Optional[str] = None,
         profile_dir: Optional[str] = None,
+        channel: Optional[str] = None,
+        chrome_args: Optional[list[str]] = None,
     ):
         self.headless = headless
         self.browser_type = browser_type
         self.executable_path = executable_path
         self.profile_dir = profile_dir
+        self.channel = channel
+        self.chrome_args = chrome_args or []
         self._playwright = None
         self._browser = None
         self._context = None
@@ -72,14 +86,18 @@ class BrowserController:
         self._playwright = sync_playwright().start()
         launcher = getattr(self._playwright, self.browser_type)
         exe = self.executable_path or (
-            _default_chromium_executable() if self.browser_type == "chromium" else None
+            _default_chromium_executable() if self.browser_type == "chromium" and not self.channel else None
         )
 
         if self.profile_dir:
             os.makedirs(self.profile_dir, exist_ok=True)
             launch_kwargs = {"headless": self.headless, "user_data_dir": self.profile_dir}
-            if exe:
+            if self.channel:
+                launch_kwargs["channel"] = self.channel
+            elif exe:
                 launch_kwargs["executable_path"] = exe
+            if self.chrome_args:
+                launch_kwargs["args"] = self.chrome_args
             self._context = launcher.launch_persistent_context(**launch_kwargs)
             self._browser = None
             page = self._context.pages[0] if self._context.pages else self._context.new_page()
