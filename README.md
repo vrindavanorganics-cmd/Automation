@@ -107,11 +107,29 @@ python main.py --text
 
 # Real voice mode — Windows only, requires requirements/windows.txt + a mic.
 python main.py --voice
+
+# Real desktop window — mic button + text box + history, Windows only.
+python main.py --gui
 ```
 
 In `--voice` mode: hold the configured hotkey (`ORBIT_HOTKEY`, default
 `ctrl+shift+space`) to talk, release to send. Say **"Orbit, stop"** or press `Esc`
 (tray icon, when running) to interrupt at any time.
+
+### Desktop app — no PowerShell needed day to day
+
+`--gui` opens a real window (mic button, a text box for typed commands, live
+history, Stop) instead of a console. Set it up **once**, then just double-click
+an icon from then on:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\create_desktop_shortcut.ps1
+```
+
+This creates an **ORBIT** icon on your Desktop that launches `main.py --gui`
+via `pythonw.exe` (no console window, no typing). Double-click it any time —
+that's the whole workflow after this one-time setup. Uses Tkinter (bundled
+with a standard Windows Python install — no extra dependency).
 
 ### The critical demo (spec section 20)
 
@@ -166,6 +184,8 @@ you> Orbit, send it.        <- always asks for confirmation first
 | Email drafts locally but Gmail shows nothing | You aren't logged into Google in the Chrome profile ORBIT used — pick (or configure via `ORBIT_CHROME_PROFILE`) a profile that's already signed into that Gmail account |
 | Browser action does nothing / errors about profile in use | The Chrome profile ORBIT is trying to use is already open in one of your normal Chrome windows — close that window first, then retry |
 | Memory database locked | Only one ORBIT process should hold `data/memory/orbit.db` at a time |
+| `ModuleNotFoundError: No module named 'tkinter'` (`--gui`) | Rare on the python.org Windows installer (it's included by default) — if it happened, re-run the installer, choose "Modify", and make sure "tcl/tk and IDLE" is checked |
+| Desktop shortcut icon looks generic | Pillow wasn't installed when `create_desktop_shortcut.ps1` ran (`pip install -r requirements/windows.txt` first) — the shortcut still works either way, just without the custom icon |
 
 ## 9. Local testing commands
 
@@ -209,7 +229,7 @@ python main.py --text
 | ASR training pipeline | Built: clean/normalize/split/evaluate(WER/CER)/version are real and tested; download/train correctly refuse to run automatically (require network/GPU + explicit local execution). |
 | Memory (SQLite, secret-rejecting) | Built and tested. |
 | Activity history | Built and tested. |
-| Desktop UI | Text-mode REPL built and tested here. `python main.py --voice` now runs the system tray icon (status dot, current task, Stop/History/Settings menu, Esc-to-stop) as the real voice-mode UI, with menu wiring tested against a fake icon here. Actual on-screen rendering is **LOCAL WINDOWS TEST NEEDED** — no display in this workspace. |
+| Desktop UI | Text-mode REPL built and tested here. `python main.py --voice` runs the system tray icon (status dot, current task, Stop/History/Settings menu, Esc-to-stop) as the real voice-mode UI. `python main.py --gui` (Tkinter) is a real window — mic button, text box, live history, Stop — launchable from a Desktop shortcut (`scripts\create_desktop_shortcut.ps1`) with no PowerShell/terminal needed day to day; its event logic is tested here against a fake system/recorder. Actual on-screen rendering (tray + window) is **LOCAL WINDOWS TEST NEEDED** — no display in this workspace. |
 
 ---
 

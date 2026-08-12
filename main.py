@@ -7,6 +7,11 @@
                                local ASR + system tray. LOCAL WINDOWS TEST
                                NEEDED — requires requirements/windows.txt
                                and an actual Windows desktop/microphone.
+    python main.py --gui      Real desktop window: mic button, text box,
+                               history -- open like a normal app instead of
+                               a terminal. Run scripts\\create_desktop_shortcut.ps1
+                               once to get a double-clickable icon for this.
+                               LOCAL WINDOWS TEST NEEDED.
 """
 from __future__ import annotations
 
@@ -152,15 +157,24 @@ def _run_with_tray(state, listener, hotkey: str) -> None:
     icon.run(setup=setup)
 
 
+def run_gui_mode() -> None:
+    from orbit.ui.desktop_app import run_gui_mode as _run_gui_mode
+
+    _run_gui_mode()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="ORBIT — personal voice AI computer agent")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--text", action="store_true", help="Run in text-mode REPL (default)")
     mode.add_argument("--voice", action="store_true", help="Run real voice loop (Windows only)")
+    mode.add_argument("--gui", action="store_true", help="Run the real desktop window (Windows only)")
     args = parser.parse_args()
 
     if args.voice:
         run_voice_mode()
+    elif args.gui:
+        run_gui_mode()
     else:
         run_text_mode()
 

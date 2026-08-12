@@ -12,6 +12,7 @@ dist/
 data/
 !data/.gitkeep
 models_cache/
+assets/*.ico
 *.log
 .coverage
 htmlcov/
