@@ -34,6 +34,15 @@ DEFAULT_APPS: list[AppEntry] = [
         aliases=["chrome", "google chrome", "browser"],
     ),
     AppEntry(
+        name="Microsoft Edge",
+        executable="msedge.exe",
+        common_paths=[
+            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+            r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+        ],
+        aliases=["edge", "microsoft edge", "msedge"],
+    ),
+    AppEntry(
         name="Microsoft Excel",
         executable="EXCEL.EXE",
         common_paths=[r"C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE"],
@@ -82,6 +91,11 @@ class AppRegistry:
 
     def resolve(self, name_or_alias: str) -> Optional[AppEntry]:
         needle = name_or_alias.strip().lower()
+        if not needle:
+            # An empty needle is a substring of every app name below, which
+            # would otherwise silently resolve to whichever app happens to
+            # be registered first. No name means no match.
+            return None
         for app in self.apps.values():
             if app.name.lower() == needle:
                 return app

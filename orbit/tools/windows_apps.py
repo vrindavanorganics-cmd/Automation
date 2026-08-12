@@ -16,13 +16,32 @@ class WindowsAppsTool(Tool):
         self.registry = registry
 
     def do_open_app(self, app: str) -> ToolResult:
+        if not app or not app.strip():
+            return ToolResult.fail("No application specified to open")
         entry = self.registry.resolve(app)
-        target = entry.executable if entry else app
         display_name = entry.name if entry else app
+        # Prefer the full resolved path found by AppRegistry.detect_installed()
+        # (via shutil.which()/common install locations) over the bare
+        # executable name -- Windows only searches a handful of fixed
+        # locations plus PATH for bare names, and most installers don't add
+        # themselves to PATH, so a bare "chrome.exe" often silently fails
+        # to actually launch anything even when Popen() itself succeeds.
+        target = (entry.resolved_path if entry and entry.resolved_path else None) or (
+            entry.executable if entry else app
+        )
         launched = self.controller.launch_app(target)
         if not launched:
+            if entry and entry.installed is False:
+                return ToolResult.fail(
+                    f"{display_name} does not appear to be installed on this PC", app=display_name
+                )
             return ToolResult.fail(f"Failed to launch {display_name}", app=display_name)
-        return ToolResult.ok(f"Launched {display_name}", app=display_name, backend=self.controller.backend_name)
+        return ToolResult.ok(
+            f"Launched {display_name}",
+            app=display_name,
+            backend=self.controller.backend_name,
+            windows=self.controller.list_windows(),
+        )
 
     def do_close_app(self, app: str) -> ToolResult:
         entry = self.registry.resolve(app)

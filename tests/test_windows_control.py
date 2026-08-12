@@ -55,3 +55,19 @@ def test_app_registry_resolve_by_alias():
 def test_app_registry_resolve_unknown_returns_none():
     registry = AppRegistry()
     assert registry.resolve("totally unknown app xyz") is None
+
+
+def test_app_registry_resolve_empty_string_returns_none():
+    # Regression: "" is a substring of every app name, so an unresolved
+    # entity (e.g. "open edge" before Edge was registered) must not
+    # silently fall through to matching whichever app is registered first.
+    registry = AppRegistry()
+    assert registry.resolve("") is None
+    assert registry.resolve("   ") is None
+
+
+def test_app_registry_resolve_edge_by_alias():
+    registry = AppRegistry()
+    entry = registry.resolve("edge")
+    assert entry is not None
+    assert entry.name == "Microsoft Edge"

@@ -65,6 +65,9 @@ ACTION_PRIORITY = [
 KNOWN_APPS = {
     "chrome": "Google Chrome",
     "google chrome": "Google Chrome",
+    "edge": "Microsoft Edge",
+    "microsoft edge": "Microsoft Edge",
+    "msedge": "Microsoft Edge",
     "excel": "Microsoft Excel",
     "word": "Microsoft Word",
     "notion": "Notion",
