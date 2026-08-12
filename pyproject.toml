@@ -1,0 +1,21 @@
+[project]
+name = "orbit"
+version = "0.1.0"
+description = "ORBIT — personal local-first voice AI computer agent for Windows"
+requires-python = ">=3.10"
+readme = "README.md"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["orbit*"]
