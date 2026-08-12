@@ -24,6 +24,15 @@ def cli_confirm(request: ConfirmationRequest) -> bool:
 
 def run_repl(system: OrbitSystem) -> None:
     print("ORBIT — text mode (type a command, or 'quit' to exit)")
+    backend = system.controller.backend_name
+    if backend == "real-windows":
+        print("Computer control backend: real-windows (apps will actually launch)")
+    else:
+        print(
+            f"Computer control backend: {backend} -- NOTHING will actually open on your PC. "
+            "Commands like 'open chrome' will only print text.\n"
+            "Run 'python scripts\\check_windows_control.py' to find out why."
+        )
     print("Examples: 'open chrome', 'create a folder called Buyer Leads', 'orbit, stop'\n")
     while True:
         try:

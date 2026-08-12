@@ -16,6 +16,7 @@ get_controller() picks the right one automatically.
 from __future__ import annotations
 
 import platform
+import sys
 import time
 from dataclasses import dataclass
 from typing import Optional
@@ -221,9 +222,26 @@ class RealWindowsController(WindowsController):
 
 
 def get_controller(force_simulated: bool = False) -> WindowsController:
-    if force_simulated or platform.system() != "Windows":
+    if force_simulated:
+        return SimulatedController()
+    if platform.system() != "Windows":
+        print(
+            f"[ORBIT] Not running on Windows (detected: {platform.system()}) -- using the "
+            "SIMULATED computer-control backend. No real app will actually launch.",
+            file=sys.stderr,
+        )
         return SimulatedController()
     try:
         return RealWindowsController()
-    except RuntimeError:
+    except RuntimeError as exc:
+        # This used to fail silently, so a broken requirements/windows.txt
+        # install would make every "open X" command print a fake "Launched
+        # X" from SimulatedController with nothing real ever happening, and
+        # no indication why. Always surface the real reason.
+        print(
+            "[ORBIT] WARNING: could not start real Windows computer control, "
+            f"falling back to the SIMULATED backend (no real app will launch): {exc}\n"
+            "Run 'python scripts\\check_windows_control.py' for a full diagnostic.",
+            file=sys.stderr,
+        )
         return SimulatedController()
